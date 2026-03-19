@@ -10,7 +10,7 @@ RUN npm run build
 FROM eclipse-temurin:25-jdk AS builder
 WORKDIR /app
 COPY . .
-COPY --from=frontend /app/frontend/dist src/main/resources/static/
+COPY --from=frontend /app/src/main/resources/static/ src/main/resources/static/
 RUN ./gradlew bootJar -x test
 
 # Stage 3: Minimal runtime image
