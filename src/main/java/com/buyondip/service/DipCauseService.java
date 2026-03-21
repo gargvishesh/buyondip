@@ -35,28 +35,47 @@ public class DipCauseService {
             "Realty", "^CNXREALTY"
     );
 
+    private static final Map<String, String> US_SECTOR_INDEX_MAP = Map.of(
+            "Technology", "XLK",
+            "Financials", "XLF",
+            "Healthcare", "XLV",
+            "Energy", "XLE",
+            "Consumer Discretionary", "XLY",
+            "Consumer Staples", "XLP",
+            "Industrials", "XLI",
+            "Utilities", "XLU"
+    );
+
     private static final double GLOBAL_THRESHOLD = -3.0;
     private static final double SECTOR_THRESHOLD = -3.0;
 
     public record CauseResult(DipCause cause, String message) {}
 
     public CauseResult detectCause(String sector, LocalDate peakDate) {
-        double niftyDrop = computeDrop("^NSEI", peakDate);
-        if (niftyDrop <= GLOBAL_THRESHOLD) {
+        return detectCause(sector, peakDate, "NSE");
+    }
+
+    public CauseResult detectCause(String sector, LocalDate peakDate, String exchange) {
+        boolean isUs = "NYSE".equals(exchange) || "NASDAQ".equals(exchange);
+        String broadIndex = isUs ? "^GSPC" : "^NSEI";
+        String broadName = isUs ? "S&P 500" : "Nifty 50";
+
+        double broadDrop = computeDrop(broadIndex, peakDate);
+        if (broadDrop <= GLOBAL_THRESHOLD) {
             return new CauseResult(
                     DipCause.GLOBAL,
-                    String.format("Nifty 50 also fell %.1f%% — broad market correction", niftyDrop)
+                    String.format("%s also fell %.1f%% — broad market correction", broadName, broadDrop)
             );
         }
 
         if (sector != null) {
-            String sectorIndex = findSectorIndex(sector);
+            String sectorIndex = isUs ? findUsSectorIndex(sector) : findSectorIndex(sector);
             if (sectorIndex != null) {
                 double sectorDrop = computeDrop(sectorIndex, peakDate);
                 if (sectorDrop <= SECTOR_THRESHOLD) {
                     return new CauseResult(
                             DipCause.SECTOR,
-                            String.format("Nifty %s fell %.1f%% — sector rotation", sector, sectorDrop)
+                            String.format("%s sector fell %.1f%% — sector rotation", sector, sectorDrop)
                     );
                 }
             }
@@ -98,6 +117,15 @@ public class DipCauseService {
 
     private String findSectorIndex(String sector) {
         for (Map.Entry<String, String> entry : SECTOR_INDEX_MAP.entrySet()) {
+            if (sector.toLowerCase().contains(entry.getKey().toLowerCase())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private String findUsSectorIndex(String sector) {
+        for (Map.Entry<String, String> entry : US_SECTOR_INDEX_MAP.entrySet()) {
             if (sector.toLowerCase().contains(entry.getKey().toLowerCase())) {
                 return entry.getValue();
             }

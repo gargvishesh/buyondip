@@ -3,9 +3,11 @@ import {
   ResponsiveContainer, ReferenceLine, ReferenceArea,
 } from 'recharts'
 import { PriceHistory } from '../../api/stocks'
+import { currencySymbol } from '../../utils/currency'
 
 interface Props {
   data: PriceHistory
+  exchange?: string
 }
 
 function fmtDate(d: string) {
@@ -13,7 +15,7 @@ function fmtDate(d: string) {
   return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
 }
 
-export default function PriceChart({ data }: Props) {
+export default function PriceChart({ data, exchange = 'NSE' }: Props) {
   if (!data.candles || data.candles.length === 0) {
     return <div className="flex items-center justify-center h-48 text-gray-400">No price data</div>
   }
@@ -34,7 +36,7 @@ export default function PriceChart({ data }: Props) {
         <h3 className="font-semibold text-gray-900">Price History</h3>
         {data.peakPrice && (
           <span className="text-xs text-gray-500">
-            Peak ₹{Number(data.peakPrice).toLocaleString('en-IN')}
+            Peak {currencySymbol(exchange)}{Number(data.peakPrice).toLocaleString(exchange === 'NSE' ? 'en-IN' : 'en-US')}
           </span>
         )}
       </div>
@@ -50,11 +52,11 @@ export default function PriceChart({ data }: Props) {
           <YAxis
             domain={['auto', 'auto']}
             tick={{ fontSize: 11 }}
-            tickFormatter={v => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+            tickFormatter={v => `${currencySymbol(exchange)}${Number(v).toLocaleString(exchange === 'NSE' ? 'en-IN' : 'en-US', { maximumFractionDigits: 0 })}`}
             width={80}
           />
           <Tooltip
-            formatter={(v: unknown) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Price']}
+            formatter={(v: unknown) => [`${currencySymbol(exchange)}${Number(v).toLocaleString(exchange === 'NSE' ? 'en-IN' : 'en-US')}`, 'Price']}
             labelFormatter={(d: unknown) => fmtDate(String(d))}
           />
 

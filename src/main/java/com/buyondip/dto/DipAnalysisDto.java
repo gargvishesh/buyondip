@@ -22,6 +22,7 @@ public class DipAnalysisDto {
     private String source;
     private Double compositeScore;
     private Double fundamentalScore;
+    private String exchange;
 
     public String getSymbol() { return symbol; }
     public void setSymbol(String symbol) { this.symbol = symbol; }
@@ -55,4 +56,6 @@ public class DipAnalysisDto {
     public void setCompositeScore(Double compositeScore) { this.compositeScore = compositeScore; }
     public Double getFundamentalScore() { return fundamentalScore; }
     public void setFundamentalScore(Double fundamentalScore) { this.fundamentalScore = fundamentalScore; }
+    public String getExchange() { return exchange; }
+    public void setExchange(String exchange) { this.exchange = exchange; }
 }

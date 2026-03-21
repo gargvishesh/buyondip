@@ -8,6 +8,7 @@ import FundamentalsPanel from '../components/stock/FundamentalsPanel'
 import DipCauseBadge from '../components/stock/DipCauseBadge'
 import RiseAndDipAnnotation from '../components/stock/RiseAndDipAnnotation'
 import Spinner from '../components/shared/Spinner'
+import { formatPrice } from '../utils/currency'
 
 const RANGES = ['1mo', '3mo', '6mo', '1y', '2y']
 
@@ -20,15 +21,21 @@ export default function StockDetailPage() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
 
+  const exchange = dip?.exchange || fundamentals?.exchange || 'NSE'
+
   useEffect(() => {
     if (!symbol) return
     setLoading(true)
+    let resolvedExchange = 'NSE'
     Promise.allSettled([
       getPriceHistory(symbol, range).then(setHistory),
-      getFundamentals(symbol).then(setFundamentals),
-      getDipForSymbol(symbol).then(setDip).catch(() => setDip(null)),
-      getStockNews(symbol).then(setNews).catch(() => setNews([])),
-    ]).finally(() => setLoading(false))
+      getDipForSymbol(symbol).then(d => { setDip(d); resolvedExchange = d?.exchange || 'NSE' }).catch(() => setDip(null)),
+    ]).then(() =>
+      Promise.allSettled([
+        getFundamentals(symbol, resolvedExchange).then(setFundamentals),
+        getStockNews(symbol, resolvedExchange).then(setNews).catch(() => setNews([])),
+      ])
+    ).finally(() => setLoading(false))
   }, [symbol, range])
 
   if (!symbol) return <div className="p-8 text-gray-500">Invalid symbol</div>
@@ -63,7 +70,7 @@ export default function StockDetailPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {history && <PriceChart data={history} />}
+            {history && <PriceChart data={history} exchange={exchange} />}
 
             {/* Dip details */}
             {dip && (
@@ -71,8 +78,8 @@ export default function StockDetailPage() {
                 <h3 className="font-semibold text-gray-900 mb-3">Dip Analysis</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                   {[
-                    { label: 'Current', value: `₹${Number(dip.currentPrice).toLocaleString('en-IN')}` },
-                    { label: 'Peak', value: `₹${Number(dip.peakPrice).toLocaleString('en-IN')}` },
+                    { label: 'Current', value: formatPrice(Number(dip.currentPrice), exchange) },
+                    { label: 'Peak', value: formatPrice(Number(dip.peakPrice), exchange) },
                     { label: 'Dip %', value: `${Number(dip.dipPercent).toFixed(1)}%`, color: 'text-red-600' },
                     { label: 'Prior Rise', value: `+${Number(dip.priorRisePercent).toFixed(1)}%`, color: 'text-green-600' },
                   ].map(m => (
@@ -111,7 +118,7 @@ export default function StockDetailPage() {
           </div>
 
           <div>
-            {fundamentals && <FundamentalsPanel data={fundamentals} />}
+            {fundamentals && <FundamentalsPanel data={fundamentals} exchange={exchange} />}
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { DipAnalysis } from '../../api/dips'
 import DipCauseBadge from '../stock/DipCauseBadge'
+import { formatPrice } from '../../utils/currency'
 
 interface Props {
   alert: DipAnalysis
@@ -31,7 +32,7 @@ export default function DipAlertCard({ alert, showScore }: Props) {
         <div>
           <p className="text-xs text-gray-400">Current</p>
           <p className="font-semibold text-gray-900">
-            ₹{Number(alert.currentPrice).toLocaleString('en-IN')}
+            {formatPrice(Number(alert.currentPrice), alert.exchange || 'NSE')}
           </p>
         </div>
         <div>

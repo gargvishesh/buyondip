@@ -30,7 +30,8 @@ public class WatchlistController {
         WatchlistItem item = watchlistService.addStock(
                 req.symbol().toUpperCase(),
                 req.companyName(),
-                req.sector()
+                req.sector(),
+                req.exchange()
         );
         return ResponseEntity.ok(item);
     }
@@ -44,6 +45,7 @@ public class WatchlistController {
     public record AddStockRequest(
             @NotBlank String symbol,
             @NotBlank String companyName,
-            String sector
+            String sector,
+            String exchange
     ) {}
 }

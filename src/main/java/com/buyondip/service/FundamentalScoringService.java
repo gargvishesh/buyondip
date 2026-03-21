@@ -14,12 +14,22 @@ public class FundamentalScoringService {
      * PromoterHolding assumes percentage (>= 50 means >= 50%).
      */
     public double score(FundamentalsDto f) {
+        return score(f, "NSE");
+    }
+
+    public double score(FundamentalsDto f, String exchange) {
+        boolean isUs = "NYSE".equals(exchange) || "NASDAQ".equals(exchange);
         double s = 0.0;
         if (f.getRoe() != null && f.getRoe().doubleValue() >= 0.15) s += 0.2;
         if (f.getRoce() != null && f.getRoce().doubleValue() >= 0.15) s += 0.2;
         if (f.getDebtToEquity() != null && f.getDebtToEquity().doubleValue() <= 1.0) s += 0.2;
         if (f.getEpsGrowth() != null && f.getEpsGrowth().doubleValue() > 0) s += 0.2;
-        if (f.getPromoterHolding() != null && f.getPromoterHolding().doubleValue() >= 50) s += 0.2;
-        return s;
+        if (!isUs) {
+            if (f.getPromoterHolding() != null && f.getPromoterHolding().doubleValue() >= 50) s += 0.2;
+        } else {
+            // Normalize 4-criterion score to [0, 1] for US stocks
+            s = s / 0.8;
+        }
+        return Math.min(1.0, s);
     }
 }

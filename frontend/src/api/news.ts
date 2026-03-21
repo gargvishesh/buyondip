@@ -8,8 +8,8 @@ export interface NewsItem {
   publishedAt: string
 }
 
-export const getStockNews = (symbol: string) =>
-  api.get<NewsItem[]>(`/news/${symbol}`).then(r => r.data)
+export const getStockNews = (symbol: string, exchange = 'NSE') =>
+  api.get<NewsItem[]>(`/news/${symbol}`, { params: { exchange } }).then(r => r.data)
 
 export const getMarketNews = () =>
   api.get<NewsItem[]>('/news/market').then(r => r.data)

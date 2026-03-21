@@ -4,6 +4,7 @@ export interface StockSummary {
   symbol: string
   companyName: string
   sector: string
+  exchange: string
   currentPrice: number
   change: number
   changePercent: number
@@ -16,6 +17,7 @@ export interface AddStockRequest {
   symbol: string
   companyName: string
   sector: string
+  exchange: string
 }
 
 export const getWatchlist = () => api.get<StockSummary[]>('/watchlist').then(r => r.data)

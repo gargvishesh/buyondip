@@ -24,6 +24,7 @@ export interface PriceHistory {
 export interface Fundamentals {
   symbol: string
   companyName: string
+  exchange: string
   pe: number
   roe: number
   roce: number
@@ -39,8 +40,8 @@ export interface Fundamentals {
 export const getPriceHistory = (symbol: string, range = '6mo') =>
   api.get<PriceHistory>(`/stocks/${symbol}/price-history`, { params: { range } }).then(r => r.data)
 
-export const getFundamentals = (symbol: string) =>
-  api.get<Fundamentals>(`/stocks/${symbol}/fundamentals`).then(r => r.data)
+export const getFundamentals = (symbol: string, exchange = 'NSE') =>
+  api.get<Fundamentals>(`/stocks/${symbol}/fundamentals`, { params: { exchange } }).then(r => r.data)
 
 export const searchStocks = (q: string) =>
-  api.get<{ symbol: string; name: string }[]>('/stocks/search', { params: { q } }).then(r => r.data)
+  api.get<{ symbol: string; name: string; exchange: string }[]>('/stocks/search', { params: { q } }).then(r => r.data)

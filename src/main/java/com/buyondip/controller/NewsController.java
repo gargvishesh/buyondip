@@ -17,8 +17,10 @@ public class NewsController {
     }
 
     @GetMapping("/{symbol}")
-    public List<NewsItemDto> getStockNews(@PathVariable String symbol) {
-        return newsService.getStockNews(symbol.toUpperCase());
+    public List<NewsItemDto> getStockNews(
+            @PathVariable String symbol,
+            @RequestParam(defaultValue = "NSE") String exchange) {
+        return newsService.getStockNews(symbol.toUpperCase(), exchange);
     }
 
     @GetMapping("/market")

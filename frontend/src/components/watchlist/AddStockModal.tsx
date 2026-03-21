@@ -7,13 +7,15 @@ interface Props {
   onClose: () => void
 }
 
-const SECTORS = ['IT', 'Bank', 'Pharma', 'Auto', 'Energy', 'FMCG', 'Metal', 'Realty', 'Other']
+const NSE_SECTORS = ['IT', 'Bank', 'Pharma', 'Auto', 'Energy', 'FMCG', 'Metal', 'Realty', 'Other']
+const US_SECTORS = ['Technology', 'Financials', 'Healthcare', 'Energy', 'Consumer Discretionary', 'Consumer Staples', 'Industrials', 'Utilities', 'Other']
 
 export default function AddStockModal({ onAdd, onClose }: Props) {
   const [symbol, setSymbol] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [sector, setSector] = useState('')
-  const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([])
+  const [exchange, setExchange] = useState('NSE')
+  const [suggestions, setSuggestions] = useState<{ symbol: string; name: string; exchange: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const ref = useRef<HTMLDivElement>(null)
@@ -39,7 +41,7 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
     if (!symbol || !companyName) { setError('Symbol and company name required'); return }
     setLoading(true)
     try {
-      await onAdd({ symbol: symbol.toUpperCase(), companyName, sector })
+      await onAdd({ symbol: symbol.toUpperCase(), companyName, sector, exchange })
       onClose()
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to add stock')
@@ -68,13 +70,19 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
                     key={s.symbol}
                     className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
                     onClick={() => {
-                      setSymbol(s.symbol.replace('.NS', '').replace('.BO', ''))
+                      const sugExchange = s.exchange || 'NSE'
+                      const cleanSymbol = sugExchange === 'NSE'
+                        ? s.symbol.replace('.NS', '').replace('.BO', '')
+                        : s.symbol
+                      setSymbol(cleanSymbol)
                       setCompanyName(s.name)
+                      setExchange(sugExchange)
                       setSuggestions([])
                     }}
                   >
                     <span className="font-medium">{s.symbol}</span>
                     <span className="text-gray-500 ml-2">{s.name}</span>
+                    <span className="text-xs text-blue-500 ml-2">{s.exchange || 'NSE'}</span>
                   </li>
                 ))}
               </ul>
@@ -92,6 +100,19 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Exchange</label>
+            <select
+              value={exchange}
+              onChange={e => { setExchange(e.target.value); setSector('') }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="NSE">NSE (India)</option>
+              <option value="NYSE">NYSE (US)</option>
+              <option value="NASDAQ">NASDAQ (US)</option>
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Sector</label>
             <select
               value={sector}
@@ -99,7 +120,7 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select sector</option>
-              {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+              {(exchange === 'NSE' ? NSE_SECTORS : US_SECTORS).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 

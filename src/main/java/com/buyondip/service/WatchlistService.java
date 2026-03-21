@@ -38,12 +38,18 @@ public class WatchlistService {
 
     @Transactional
     public WatchlistItem addStock(String symbol, String companyName, String sector) {
+        return addStock(symbol, companyName, sector, "NSE");
+    }
+
+    @Transactional
+    public WatchlistItem addStock(String symbol, String companyName, String sector, String exchange) {
         if (watchlistRepository.existsById(symbol)) {
             throw new IllegalArgumentException("Symbol " + symbol + " already in watchlist");
         }
-        WatchlistItem item = new WatchlistItem(symbol, companyName, sector);
+        String resolvedExchange = exchange != null ? exchange : "NSE";
+        WatchlistItem item = new WatchlistItem(symbol, companyName, sector, resolvedExchange);
         WatchlistItem saved = watchlistRepository.save(item);
-        yahooFinanceService.refreshPriceHistory(symbol);
+        yahooFinanceService.refreshPriceHistory(symbol, resolvedExchange);
         return saved;
     }
 
@@ -62,8 +68,9 @@ public class WatchlistService {
             dto.setSymbol(item.getSymbol());
             dto.setCompanyName(item.getCompanyName());
             dto.setSector(item.getSector());
+            dto.setExchange(item.getExchange());
 
-            Optional<BigDecimal[]> quote = yahooFinanceService.getCurrentQuote(item.getSymbol());
+            Optional<BigDecimal[]> quote = yahooFinanceService.getCurrentQuote(item.getSymbol(), item.getExchange());
             quote.ifPresent(q -> {
                 dto.setCurrentPrice(q[0]);
                 dto.setChange(q[1]);

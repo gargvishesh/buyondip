@@ -12,6 +12,7 @@ public class StockSummaryDto {
     private boolean inDip;
     private BigDecimal dipPercent;
     private String dipCause;
+    private String exchange;
 
     public String getSymbol() { return symbol; }
     public void setSymbol(String symbol) { this.symbol = symbol; }
@@ -31,4 +32,6 @@ public class StockSummaryDto {
     public void setDipPercent(BigDecimal dipPercent) { this.dipPercent = dipPercent; }
     public String getDipCause() { return dipCause; }
     public void setDipCause(String dipCause) { this.dipCause = dipCause; }
+    public String getExchange() { return exchange; }
+    public void setExchange(String exchange) { this.exchange = exchange; }
 }

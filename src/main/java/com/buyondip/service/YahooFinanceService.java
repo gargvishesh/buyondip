@@ -43,16 +43,23 @@ public class YahooFinanceService {
         this.stockPriceRepository = stockPriceRepository;
     }
 
-    public String toYahooSymbol(String symbol) {
+    public String toYahooSymbol(String symbol, String exchange) {
         if (symbol.startsWith("^") || symbol.contains(".")) {
+            return symbol;
+        }
+        if ("NYSE".equals(exchange) || "NASDAQ".equals(exchange)) {
             return symbol;
         }
         return symbol + ".NS";
     }
 
+    public String toYahooSymbol(String symbol) {
+        return toYahooSymbol(symbol, "NSE");
+    }
+
     @Transactional
-    public List<StockPrice> refreshPriceHistory(String symbol) {
-        String yahooSymbol = toYahooSymbol(symbol);
+    public List<StockPrice> refreshPriceHistory(String symbol, String exchange) {
+        String yahooSymbol = toYahooSymbol(symbol, exchange);
         String url = YAHOO_BASE + "/v8/finance/chart/" + yahooSymbol
                 + "?range=3mo&interval=1d&includePrePost=false";
 
@@ -105,8 +112,17 @@ public class YahooFinanceService {
         }
     }
 
+    @Transactional
+    public List<StockPrice> refreshPriceHistory(String symbol) {
+        return refreshPriceHistory(symbol, "NSE");
+    }
+
     public Optional<BigDecimal[]> getCurrentQuote(String symbol) {
-        String yahooSymbol = toYahooSymbol(symbol);
+        return getCurrentQuote(symbol, "NSE");
+    }
+
+    public Optional<BigDecimal[]> getCurrentQuote(String symbol, String exchange) {
+        String yahooSymbol = toYahooSymbol(symbol, exchange);
         String url = YAHOO_BASE + "/v8/finance/chart/" + yahooSymbol
                 + "?range=1d&interval=1d&includePrePost=false";
 
@@ -126,9 +142,9 @@ public class YahooFinanceService {
         }
     }
 
-    @Cacheable(value = "fundamentals", key = "#symbol")
-    public FundamentalsDto getFundamentals(String symbol) {
-        String yahooSymbol = toYahooSymbol(symbol);
+    @Cacheable(value = "fundamentals", key = "#symbol + '-' + #exchange")
+    public FundamentalsDto getFundamentals(String symbol, String exchange) {
+        String yahooSymbol = toYahooSymbol(symbol, exchange);
         String url = YAHOO_BASE + "/v10/finance/quoteSummary/" + yahooSymbol
                 + "?modules=summaryDetail,defaultKeyStatistics,financialData,assetProfile";
 
@@ -163,10 +179,15 @@ public class YahooFinanceService {
         return dto;
     }
 
+    @Cacheable(value = "fundamentals", key = "#symbol + '-NSE'")
+    public FundamentalsDto getFundamentals(String symbol) {
+        return getFundamentals(symbol, "NSE");
+    }
+
     @Cacheable(value = "symbolSearch", key = "#query")
     public List<String[]> searchSymbols(String query) {
         String url = "https://query2.finance.yahoo.com/v1/finance/search?q=" + query
-                + "&lang=en-IN&region=IN&quotesCount=8&newsCount=0&listsCount=0";
+                + "&lang=en&quotesCount=10&newsCount=0&listsCount=0";
 
         List<String[]> results = new ArrayList<>();
         try {
@@ -176,8 +197,12 @@ public class YahooFinanceService {
                 String sym = q.path("symbol").asText();
                 String name = q.path("longname").asText(q.path("shortname").asText(""));
                 String type = q.path("quoteType").asText("");
-                if ("EQUITY".equals(type) && sym.endsWith(".NS")) {
-                    results.add(new String[]{sym.replace(".NS", ""), name});
+                if (!"EQUITY".equals(type)) continue;
+                if (sym.endsWith(".NS")) {
+                    results.add(new String[]{sym.replace(".NS", ""), name, "NSE"});
+                } else if (!sym.contains(".")) {
+                    // US equity (NYSE/NASDAQ)
+                    results.add(new String[]{sym, name, "NYSE"});
                 }
             }
         } catch (Exception e) {

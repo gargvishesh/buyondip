@@ -36,7 +36,7 @@ public class SchedulerConfig {
         log.info("Scheduled price refresh for {} symbols", items.size());
         for (WatchlistItem item : items) {
             try {
-                yahooFinanceService.refreshPriceHistory(item.getSymbol());
+                yahooFinanceService.refreshPriceHistory(item.getSymbol(), item.getExchange());
             } catch (Exception e) {
                 log.warn("Failed to refresh prices for {}: {}", item.getSymbol(), e.getMessage());
             }

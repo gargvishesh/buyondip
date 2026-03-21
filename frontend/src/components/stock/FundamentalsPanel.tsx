@@ -1,7 +1,9 @@
 import { Fundamentals } from '../../api/stocks'
+import { currencySymbol, formatMarketCap } from '../../utils/currency'
 
 interface Props {
   data: Fundamentals
+  exchange?: string
 }
 
 function MetricRow({ label, value, good }: { label: string; value: string; good?: boolean | null }) {
@@ -20,13 +22,8 @@ function fmt(n: number | null | undefined, decimals = 2, suffix = '') {
   return n.toFixed(decimals) + suffix
 }
 
-function fmtCr(n: number | null | undefined) {
-  if (n == null) return 'N/A'
-  if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)}Cr`
-  return `₹${(n / 1e5).toFixed(2)}L`
-}
-
-export default function FundamentalsPanel({ data }: Props) {
+export default function FundamentalsPanel({ data, exchange = 'NSE' }: Props) {
+  const ccy = currencySymbol(exchange)
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <h3 className="font-semibold text-gray-900 mb-3">Fundamentals</h3>
@@ -36,9 +33,11 @@ export default function FundamentalsPanel({ data }: Props) {
         <MetricRow label="ROCE" value={fmt(data.roce, 1, '%')} good={data.roce != null ? data.roce > 15 : null} />
         <MetricRow label="Debt / Equity" value={fmt(data.debtToEquity, 2, 'x')} good={data.debtToEquity != null ? data.debtToEquity < 1 : null} />
         <MetricRow label="EPS Growth" value={fmt(data.epsGrowth, 1, '%')} good={data.epsGrowth != null ? data.epsGrowth > 10 : null} />
-        <MetricRow label="Promoter Holding" value={fmt(data.promoterHolding, 1, '%')} good={data.promoterHolding != null ? data.promoterHolding > 50 : null} />
-        <MetricRow label="Market Cap" value={fmtCr(data.marketCap)} />
-        <MetricRow label="Book Value" value={data.bookValue != null ? `₹${fmt(data.bookValue, 0)}` : 'N/A'} />
+        {exchange === 'NSE' && (
+          <MetricRow label="Promoter Holding" value={fmt(data.promoterHolding, 1, '%')} good={data.promoterHolding != null ? data.promoterHolding > 50 : null} />
+        )}
+        <MetricRow label="Market Cap" value={data.marketCap != null ? formatMarketCap(data.marketCap, exchange) : 'N/A'} />
+        <MetricRow label="Book Value" value={data.bookValue != null ? `${ccy}${fmt(data.bookValue, 0)}` : 'N/A'} />
         <MetricRow label="Dividend Yield" value={fmt(data.dividendYield, 2, '%')} />
       </div>
     </div>

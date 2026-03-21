@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { StockSummary } from '../../api/watchlist'
 import PercentBadge from '../shared/PercentBadge'
 import Badge from '../shared/Badge'
+import { formatPrice } from '../../utils/currency'
 
 interface Props {
   stocks: StockSummary[]
@@ -23,7 +24,7 @@ export default function WatchlistTable({ stocks, onRemove }: Props) {
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            {['Symbol', 'Company', 'Sector', 'Price', 'Change', 'Status', ''].map(h => (
+            {['Symbol', 'Company', 'Sector', 'Exchange', 'Price', 'Change', 'Status', ''].map(h => (
               <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {h}
               </th>
@@ -42,8 +43,15 @@ export default function WatchlistTable({ stocks, onRemove }: Props) {
               <td className="px-4 py-3">
                 <Badge variant="blue">{s.sector || '—'}</Badge>
               </td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  s.exchange === 'NSE' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {s.exchange || 'NSE'}
+                </span>
+              </td>
               <td className="px-4 py-3 text-sm font-semibold text-gray-900">
-                {s.currentPrice ? `₹${Number(s.currentPrice).toLocaleString('en-IN')}` : '—'}
+                {s.currentPrice ? formatPrice(s.currentPrice, s.exchange || 'NSE') : '—'}
               </td>
               <td className="px-4 py-3">
                 {s.changePercent != null ? <PercentBadge value={s.changePercent} /> : '—'}

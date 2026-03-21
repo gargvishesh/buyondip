@@ -3,6 +3,7 @@ import api from './axios'
 export interface DipAnalysis {
   symbol: string
   companyName: string
+  exchange: string
   currentPrice: number
   peakPrice: number
   peakDate: string

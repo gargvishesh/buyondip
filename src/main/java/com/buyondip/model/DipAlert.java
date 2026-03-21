@@ -63,6 +63,9 @@ public class DipAlert {
     @Column
     private Double fundamentalScore;
 
+    @Column(length = 10)
+    private String exchange = "NSE";
+
     public DipAlert() {}
 
     public Long getId() { return id; }
@@ -98,4 +101,6 @@ public class DipAlert {
     public void setCompositeScore(Double compositeScore) { this.compositeScore = compositeScore; }
     public Double getFundamentalScore() { return fundamentalScore; }
     public void setFundamentalScore(Double fundamentalScore) { this.fundamentalScore = fundamentalScore; }
+    public String getExchange() { return exchange != null ? exchange : "NSE"; }
+    public void setExchange(String exchange) { this.exchange = exchange; }
 }

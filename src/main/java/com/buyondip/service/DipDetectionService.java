@@ -1,6 +1,7 @@
 package com.buyondip.service;
 
 import com.buyondip.config.Nifty500Symbols;
+import com.buyondip.config.UsStockSymbols;
 import com.buyondip.dto.CandlestickDto;
 import com.buyondip.dto.DipAnalysisDto;
 import com.buyondip.dto.FundamentalsDto;
@@ -131,7 +132,7 @@ public class DipDetectionService {
         int count = 0;
         for (WatchlistItem item : items) {
             try {
-                Optional<DipAnalysisDto> result = analyzeStock(item.getSymbol(), item.getSector(), DipSource.WATCHLIST);
+                Optional<DipAnalysisDto> result = analyzeStock(item.getSymbol(), item.getSector(), DipSource.WATCHLIST, item.getExchange());
                 if (result.isPresent()) count++;
             } catch (Exception e) {
                 log.warn("Dip detection failed for {}: {}", item.getSymbol(), e.getMessage());
@@ -142,6 +143,11 @@ public class DipDetectionService {
 
     @Transactional
     public Optional<DipAnalysisDto> analyzeStock(String symbol, String sector, DipSource source) {
+        return analyzeStock(symbol, sector, source, "NSE");
+    }
+
+    @Transactional
+    public Optional<DipAnalysisDto> analyzeStock(String symbol, String sector, DipSource source, String exchange) {
         Optional<DipData> dipDataOpt = computeDipData(symbol);
 
         if (dipDataOpt.isEmpty()) {
@@ -155,7 +161,7 @@ public class DipDetectionService {
         }
 
         DipData d = dipDataOpt.get();
-        DipCauseService.CauseResult causeResult = dipCauseService.detectCause(sector, d.peakDate());
+        DipCauseService.CauseResult causeResult = dipCauseService.detectCause(sector, d.peakDate(), exchange);
 
         DipAlert alert = new DipAlert();
         alert.setSymbol(symbol);
@@ -172,6 +178,7 @@ public class DipDetectionService {
         alert.setCauseMessage(causeResult.message());
         alert.setActive(true);
         alert.setSource(source);
+        alert.setExchange(exchange);
 
         dipAlertRepository.findTopBySymbolAndActiveAndSourceOrderByDetectedAtDesc(symbol, true, source)
                 .ifPresent(old -> {
@@ -184,41 +191,50 @@ public class DipDetectionService {
     }
 
     /**
-     * Scans all Nifty 500 symbols for dips, scores them by composite score
+     * Scans all Nifty 500 + US symbols for dips, scores them by composite score
      * (30% dip depth + 70% fundamental quality), and saves the top N as MARKET alerts.
      */
     @Transactional
     public int detectMarketDips(int topN) {
-        List<DipData> candidates = new ArrayList<>();
+        record SymbolWithExchange(String symbol, String exchange) {}
 
-        for (String symbol : Nifty500Symbols.SYMBOLS) {
+        List<SymbolWithExchange> allSymbols = new ArrayList<>();
+        for (String s : Nifty500Symbols.SYMBOLS) allSymbols.add(new SymbolWithExchange(s, "NSE"));
+        for (String s : UsStockSymbols.SYMBOLS) allSymbols.add(new SymbolWithExchange(s, "NYSE"));
+
+        List<DipData> candidates = new ArrayList<>();
+        java.util.Map<String, String> symbolExchangeMap = new java.util.HashMap<>();
+
+        for (SymbolWithExchange se : allSymbols) {
             try {
-                // Ensure price history is cached
-                yahooFinanceService.getPriceHistory(symbol, LOOKBACK_DAYS);
-                // Price-only dip check (no DB save)
-                computeDipData(symbol).ifPresent(candidates::add);
+                yahooFinanceService.getPriceHistory(se.symbol(), LOOKBACK_DAYS);
+                computeDipData(se.symbol()).ifPresent(d -> {
+                    candidates.add(d);
+                    symbolExchangeMap.put(d.symbol(), se.exchange());
+                });
             } catch (Exception e) {
-                log.debug("Market scan skipped {}: {}", symbol, e.getMessage());
+                log.debug("Market scan skipped {}: {}", se.symbol(), e.getMessage());
             }
         }
 
-        log.info("Market scan: {} dip candidates from Nifty 500", candidates.size());
+        log.info("Market scan: {} dip candidates from Nifty 500 + US", candidates.size());
 
         record ScoredCandidate(DipData dip, double dipScore, double fundamentalScore, double compositeScore,
-                               String companyName, String sector) {}
+                               String companyName, String sector, String exchange) {}
 
         List<ScoredCandidate> scored = new ArrayList<>();
         for (DipData d : candidates) {
             try {
+                String exchange = symbolExchangeMap.getOrDefault(d.symbol(), "NSE");
                 double dipScore = Math.min(1.0, Math.max(0.0,
                         (Math.abs(d.dipPercent().doubleValue()) - 10.0) / 40.0));
 
-                FundamentalsDto fundamentals = yahooFinanceService.getFundamentals(d.symbol());
-                double fundScore = fundamentalScoringService.score(fundamentals);
+                FundamentalsDto fundamentals = yahooFinanceService.getFundamentals(d.symbol(), exchange);
+                double fundScore = fundamentalScoringService.score(fundamentals, exchange);
                 double composite = 0.3 * dipScore + 0.7 * fundScore;
 
                 scored.add(new ScoredCandidate(d, dipScore, fundScore, composite,
-                        fundamentals.getCompanyName(), fundamentals.getSector()));
+                        fundamentals.getCompanyName(), fundamentals.getSector(), exchange));
             } catch (Exception e) {
                 log.debug("Scoring failed for {}: {}", d.symbol(), e.getMessage());
             }
@@ -238,7 +254,7 @@ public class DipDetectionService {
         for (ScoredCandidate sc : topCandidates) {
             try {
                 DipData d = sc.dip();
-                DipCauseService.CauseResult causeResult = dipCauseService.detectCause(sc.sector(), d.peakDate());
+                DipCauseService.CauseResult causeResult = dipCauseService.detectCause(sc.sector(), d.peakDate(), sc.exchange());
 
                 DipAlert alert = new DipAlert();
                 alert.setSymbol(d.symbol());
@@ -256,6 +272,7 @@ public class DipDetectionService {
                 alert.setSource(DipSource.MARKET);
                 alert.setCompositeScore(sc.compositeScore());
                 alert.setFundamentalScore(sc.fundamentalScore());
+                alert.setExchange(sc.exchange());
 
                 dipAlertRepository.save(alert);
             } catch (Exception e) {
@@ -359,6 +376,7 @@ public class DipDetectionService {
         dto.setSource(a.getSource() != null ? a.getSource().name() : DipSource.WATCHLIST.name());
         dto.setCompositeScore(a.getCompositeScore());
         dto.setFundamentalScore(a.getFundamentalScore());
+        dto.setExchange(a.getExchange());
         return dto;
     }
 
@@ -367,8 +385,10 @@ public class DipDetectionService {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM yyyy");
         String troughStr = a.getTroughDate().format(fmt);
         String peakStr = a.getPeakDate().format(fmt);
+        boolean isUs = "NYSE".equals(a.getExchange()) || "NASDAQ".equals(a.getExchange());
+        String ccy = isUs ? "$" : "₹";
         String peakPrice = a.getPeakPrice() != null
-                ? "₹" + String.format("%,.0f", a.getPeakPrice().doubleValue()) : "";
+                ? ccy + String.format("%,.0f", a.getPeakPrice().doubleValue()) : "";
         double rise = a.getPriorRisePercent() != null ? a.getPriorRisePercent().doubleValue() : 0.0;
         double dip = a.getDipPercent() != null ? Math.abs(a.getDipPercent().doubleValue()) : 0.0;
         return String.format("Rose %.1f%% from %s → %s, now down %.1f%% from peak of %s",

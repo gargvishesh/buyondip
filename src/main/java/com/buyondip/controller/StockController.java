@@ -34,14 +34,16 @@ public class StockController {
     }
 
     @GetMapping("/{symbol}/fundamentals")
-    public FundamentalsDto getFundamentals(@PathVariable String symbol) {
-        return fundamentalsService.getFundamentals(symbol.toUpperCase());
+    public FundamentalsDto getFundamentals(
+            @PathVariable String symbol,
+            @RequestParam(defaultValue = "NSE") String exchange) {
+        return fundamentalsService.getFundamentals(symbol.toUpperCase(), exchange);
     }
 
     @GetMapping("/search")
     public List<Map<String, String>> search(@RequestParam String q) {
         return yahooFinanceService.searchSymbols(q).stream()
-                .map(arr -> Map.of("symbol", arr[0], "name", arr[1]))
+                .map(arr -> Map.of("symbol", arr[0], "name", arr[1], "exchange", arr.length > 2 ? arr[2] : "NSE"))
                 .toList();
     }
 }

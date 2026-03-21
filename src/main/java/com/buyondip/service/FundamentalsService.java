@@ -13,6 +13,10 @@ public class FundamentalsService {
     }
 
     public FundamentalsDto getFundamentals(String symbol) {
-        return yahooFinanceService.getFundamentals(symbol);
+        return yahooFinanceService.getFundamentals(symbol, "NSE");
+    }
+
+    public FundamentalsDto getFundamentals(String symbol, String exchange) {
+        return yahooFinanceService.getFundamentals(symbol, exchange);
     }
 }
